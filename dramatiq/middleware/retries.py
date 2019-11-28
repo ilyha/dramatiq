@@ -69,14 +69,16 @@ class Retries(Middleware):
         retries = message.options.setdefault("retries", 0)
         max_retries = message.options.get("max_retries") or actor.options.get("max_retries", self.max_retries)
         retry_when = actor.options.get("retry_when", self.retry_when)
+        
+        message.options["retries"] += 1
+        message.options["traceback"] = traceback.format_exc(limit=30)
+        
         if retry_when is not None and not retry_when(retries, exception) or \
            retry_when is None and max_retries is not None and retries >= max_retries:
             self.logger.warning("Retries exceeded for message %r.", message.message_id)
             message.fail()
             return
 
-        message.options["retries"] += 1
-        message.options["traceback"] = traceback.format_exc(limit=30)
         min_backoff = message.options.get("min_backoff") or actor.options.get("min_backoff", self.min_backoff)
         max_backoff = message.options.get("max_backoff") or actor.options.get("max_backoff", self.max_backoff)
         max_backoff = min(max_backoff, DEFAULT_MAX_BACKOFF)
